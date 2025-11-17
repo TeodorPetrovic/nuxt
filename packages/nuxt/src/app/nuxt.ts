@@ -182,6 +182,12 @@ interface _NuxtApp {
   /** @internal */
   _routeAnnouncerDeps?: number
 
+  /** @internal */
+  _cacheStore?: {
+    entries: Map<string, any>
+    tagIndex: Map<string, Set<string>>
+  }
+
   // Nuxt injections
   $config: RuntimeConfig
 

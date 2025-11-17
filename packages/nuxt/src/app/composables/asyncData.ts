@@ -9,6 +9,7 @@ import { clientOnlySymbol } from '../components/client-only'
 import type { NuxtError } from './error'
 import { createError } from './error'
 import { onNuxtReady } from './ready'
+import { getCachedData as getFromCacheStore, setCachedData as setToCacheStore } from './cache'
 
 // @ts-expect-error virtual file
 import { asyncDataDefaults, granularCachedData, pendingWhenIdle, purgeCachedData } from '#build/nuxt.config.mjs'
@@ -103,6 +104,25 @@ export interface AsyncDataOptions<
    * A timeout in milliseconds after which the request will be aborted if it has not resolved yet.
    */
   timeout?: number
+  /**
+   * Time in seconds after which the cache should be revalidated
+   * Similar to Next.js revalidate option
+   * @default undefined (no automatic revalidation)
+   */
+  revalidate?: number | false
+  /**
+   * Cache tags for granular cache invalidation
+   * Similar to Next.js cache tags
+   */
+  tags?: string[]
+  /**
+   * Cache behavior
+   * - 'force-cache': Always use cache, fetch if not available
+   * - 'no-store': Never cache, always fetch fresh
+   * - 'default': Use cache if available and not stale
+   * @default 'default'
+   */
+  cacheStrategy?: 'force-cache' | 'no-store' | 'default'
 }
 
 export interface AsyncDataExecuteOptions {
@@ -687,7 +707,13 @@ function createAsyncData<
       }
       // Avoid fetching same key that is already fetched
       if (granularCachedData || opts.cause === 'initial' || nuxtApp.isHydrating) {
-        const cachedData = 'cachedData' in opts ? opts.cachedData : options.getCachedData!(key, nuxtApp, { cause: opts.cause ?? 'refresh:manual' })
+        let cachedData = 'cachedData' in opts ? opts.cachedData : options.getCachedData!(key, nuxtApp, { cause: opts.cause ?? 'refresh:manual' })
+        
+        // If no cached data from default source and cache options are set, try the cache store
+        if (cachedData === undefined && (options.revalidate !== undefined || options.tags) && options.cacheStrategy !== 'no-store') {
+          cachedData = getFromCacheStore(key, nuxtApp)
+        }
+        
         if (cachedData !== undefined) {
           nuxtApp.payload.data[key] = asyncData.data.value = cachedData as DataT
           asyncData.error.value = undefined
@@ -741,6 +767,15 @@ function createAsyncData<
           }
 
           nuxtApp.payload.data[key] = result
+
+          // Store in cache if cacheStrategy is not 'no-store'
+          if (options.cacheStrategy !== 'no-store' && (options.revalidate !== undefined || options.tags)) {
+            setToCacheStore(key, result, {
+              revalidate: options.revalidate,
+              tags: options.tags,
+              cache: options.cacheStrategy,
+            }, nuxtApp)
+          }
 
           asyncData.data.value = result
           asyncData.error.value = undefined
