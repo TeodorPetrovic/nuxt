@@ -34,6 +34,10 @@ const granularAppPresets: InlinePreset[] = [
     from: '#app/composables/asyncData',
   },
   {
+    imports: ['getCachedData', 'setCachedData', 'revalidateTag', 'revalidatePath', 'clearCache', 'getCacheKeys', 'getCacheTags', 'getCacheEntry'],
+    from: '#app/composables/cache',
+  },
+  {
     imports: ['useHydration'],
     from: '#app/composables/hydrate',
   },

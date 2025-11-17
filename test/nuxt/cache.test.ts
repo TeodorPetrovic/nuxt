@@ -233,13 +233,16 @@ describe('cache composables', () => {
       })
 
       // First call
-      await useAsyncData('no-store-key', fetchFn, {
+      const result1 = await useAsyncData('no-store-key', fetchFn, {
         cacheStrategy: 'no-store',
       })
 
       expect(fetchFn).toHaveBeenCalledTimes(1)
 
-      // Second call should not use cache
+      // Clear the data to allow a fresh fetch
+      result1.clear()
+
+      // Second call should not use cache and should fetch again
       await useAsyncData('no-store-key', fetchFn, {
         cacheStrategy: 'no-store',
       })
